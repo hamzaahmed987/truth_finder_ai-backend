@@ -9,6 +9,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://localhost:8000",
+    "https://truthfinder-ai.vercel.app",
     # Add your production domains here
 ]
 
