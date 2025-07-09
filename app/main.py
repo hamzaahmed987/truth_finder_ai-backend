@@ -6,21 +6,19 @@ from .agents import news_agent, multi_agent_system
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "https://truthfinder-ai.vercel.app",
-    # Add your production domains here
-]
-
+# ✅ CORS settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:3000",             
+        "https://truthfinder-ai.vercel.app",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],       # Allow all HTTP methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],       # Allow all headers including Content-Type
 )
 
+# ✅ News analysis endpoint
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_news_endpoint(request: AnalysisRequest):
     try:
@@ -29,10 +27,9 @@ async def analyze_news_endpoint(request: AnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# New AI Agent endpoints
+# ✅ AI Agent: single agent analysis
 @app.post("/agent/analyze", response_model=AgentAnalysisResponse)
 async def agent_analyze_endpoint(request: AgentAnalysisRequest):
-    """Advanced analysis using AI Agent"""
     try:
         result = await news_agent.analyze_news_advanced(
             content=request.content,
@@ -42,47 +39,53 @@ async def agent_analyze_endpoint(request: AgentAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ AI Agent: multi-agent system
 @app.post("/agent/multi-analyze")
 async def multi_agent_analyze_endpoint(request: AgentAnalysisRequest):
-    """Multi-agent analysis system"""
     try:
         results = await multi_agent_system.analyze_with_multiple_agents(
             content=request.content,
             language=request.language or "english"
         )
-        # If results contains any custom objects, convert them to dicts
+
         def convert(obj):
             if hasattr(obj, "dict"):
                 return obj.dict()
             elif hasattr(obj, "__dict__"):
                 return obj.__dict__
             return obj
+
         if isinstance(results, dict):
             results = {k: convert(v) for k, v in results.items()}
+
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ Check status of the agent system
 @app.get("/agent/status")
 async def agent_status():
-    """Check agent system status"""
     return {
         "status": "active",
         "agents": ["news_analysis"],
         "version": "1.0",
         "capabilities": [
             "web_search",
-            "sentiment_analysis", 
+            "sentiment_analysis",
             "fact_checking",
             "source_credibility",
             "twitter_sentiment"
         ]
     }
 
+# ✅ Root endpoint
 @app.get("/")
 def home():
-    return {"status": "API is working!", "docs": "/docs", "agent_endpoints": "/agent/analyze"}
-
+    return {
+        "status": "API is working!",
+        "docs": "/docs",
+        "agent_endpoints": "/agent/analyze"
+    }
 
 
 
