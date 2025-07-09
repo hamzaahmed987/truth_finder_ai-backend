@@ -37,7 +37,7 @@ async def agent_analyze_endpoint(request: AgentAnalysisRequest):
             content=request.content,
             language=request.language or "english"
         )
-        return AgentAnalysisResponse(**result)
+        return AgentAnalysisResponse(**result.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -49,6 +49,15 @@ async def multi_agent_analyze_endpoint(request: AgentAnalysisRequest):
             content=request.content,
             language=request.language or "english"
         )
+        # If results contains any custom objects, convert them to dicts
+        def convert(obj):
+            if hasattr(obj, "dict"):
+                return obj.dict()
+            elif hasattr(obj, "__dict__"):
+                return obj.__dict__
+            return obj
+        if isinstance(results, dict):
+            results = {k: convert(v) for k, v in results.items()}
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
