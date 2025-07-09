@@ -10,7 +10,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",             
+        "http://localhost:3000",
+        "https://truthfinder-df2ca88ig-hamzaahmed987s-projects.vercel.app",             
         "https://truthfinder-ai.vercel.app",
     ],
     allow_credentials=True,
