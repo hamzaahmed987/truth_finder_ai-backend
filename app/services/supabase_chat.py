@@ -20,16 +20,19 @@ async def save_chat_message(user_id: str, role: str, message: str) -> bool:
     payload = {
         "user_id": user_id,
         "role": role,
-        "message": message,
-        "timestamp": datetime.utcnow().isoformat()
+        "content": message,  # Changed from "message" to "content"
     }
+    print(f"🔵 SUPABASE SAVE: URL={url}")
+    print(f"🔵 SUPABASE SAVE: Payload={payload}")
     try:
         async with httpx.AsyncClient() as client:
             res = await client.post(url, headers=HEADERS, json=payload)
+            print(f"🔵 SUPABASE SAVE: Status={res.status_code}")
+            print(f"🔵 SUPABASE SAVE: Response={res.text}")
             res.raise_for_status()
             return True
     except Exception as e:
-        print("[Supabase Save Error]", e)
+        print(f"🔵 SUPABASE SAVE ERROR: {e}")
         return False
 
 # ✅ Fetch latest chat history for a user
@@ -37,15 +40,20 @@ async def get_chat_history(user_id: str, limit: int = 50) -> list:
     url = f"{SUPABASE_URL}/rest/v1/chat_history"
     params = {
         "user_id": f"eq.{user_id}",
-        "order": "timestamp.desc",
+        "order": "created_at.desc",  # Changed from "timestamp.desc" to "created_at.desc"
         "limit": str(limit)
     }
+    print(f"🔵 SUPABASE FETCH: URL={url}")
+    print(f"🔵 SUPABASE FETCH: Params={params}")
     try:
         async with httpx.AsyncClient() as client:
             res = await client.get(url, headers=HEADERS, params=params)
+            print(f"🔵 SUPABASE FETCH: Status={res.status_code}")
+            print(f"🔵 SUPABASE FETCH: Response={res.text}")
             res.raise_for_status()
             data = res.json()
+            print(f"🔵 SUPABASE FETCH: Data count={len(data)}")
             return data[::-1]  # reverse to chronological order
     except Exception as e:
-        print("[Supabase Fetch Error]", e)
+        print(f"🔵 SUPABASE FETCH ERROR: {e}")
         return []

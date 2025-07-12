@@ -43,36 +43,26 @@ async def chat_agent(request: Request):
             raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
         # Save user message to Supabase
-        await save_chat_message(user_id=user_id, role="user", message=message)
+        logger.info(f"🔵 SAVING: user_id={user_id}, message={message[:50]}...")
+        save_result = await save_chat_message(user_id=user_id, role="user", message=message)
+        logger.info(f"🔵 SAVE RESULT: {save_result}")
 
-        # Get full chat history
-        history = await get_chat_history(user_id=user_id)
-
-        # Prepare context from history (optional truncation)
-        history_context = ""
-        for msg in history[-15:]:  # Limit to last 15 messages
-            role = msg['role']
-            text = msg['message']
-            history_context += f"{role.title()}: {text}\n"
-
-        # Compose message with history context
-        full_message = (
-            f"Conversation so far:\n{history_context}\n"
-            f"User: {message}\nAssistant:"
-        )
-
-        # Generate agent reply
+        # Generate agent reply - pass only the original message, not the full history
         if "who are you" in message.lower():
             agent_reply = IDENTITY_RESPONSE
         else:
-            # Pass the full message with history context to the orchestrator
-            agent_reply = await multi_agent_orchestrator(full_message, user_id=user_id)
+            # Pass only the original user message to the orchestrator
+            agent_reply = await multi_agent_orchestrator(message, user_id=user_id)
 
         # Save agent reply to Supabase
-        await save_chat_message(user_id=user_id, role="agent", message=agent_reply)
+        logger.info(f"🔵 SAVING AGENT REPLY: {agent_reply[:50]}...")
+        agent_save_result = await save_chat_message(user_id=user_id, role="agent", message=agent_reply)
+        logger.info(f"🔵 AGENT SAVE RESULT: {agent_save_result}")
 
         # Get updated history
+        logger.info(f"🔵 FETCHING UPDATED HISTORY")
         updated_history = await get_chat_history(user_id=user_id)
+        logger.info(f"🔵 UPDATED HISTORY COUNT: {len(updated_history)}")
 
         return {
             "response": agent_reply,
@@ -374,21 +364,7 @@ async def debug_supabase(user_id: str):
 #         return session
 #     return None
 
-# # ------------------------- Intent & Keyword Sets -------------------------
 
-# IDENTITY_RESPONSE = (
-#     "I am TruthFinder — your AI-powered news assistant. "
-#     "I specialize in summarizing, fact-checking, bias detection, investigation, and generating reports "
-#     "on news articles or claims. I aim to help people spot misinformation and make informed decisions."
-# )
-
-# IDENT_KEYWORDS = ["who are you", "what's your name", "tell me about yourself", "who is truthfinder", "what is your work"]
-# SUMMARY_KEYWORDS = ["summarize", "summary"]
-# FACTCHECK_KEYWORDS = ["fact check", "is it true", "verify", "real or fake"]
-# BIAS_KEYWORDS = ["bias", "political bias", "tone", "sentiment"]
-# INVESTIGATE_KEYWORDS = ["investigate", "investigation", "deep check"]
-# REPORT_KEYWORDS = ["report", "generate report", "final report"]
-# NEWS_KEYWORDS = ["news", "article", "headline", "report", "fake", "misinformation"]
 
 # # ------------------------- Endpoints -------------------------
 
@@ -442,7 +418,7 @@ async def debug_supabase(user_id: str):
 
 #         elif "what is my name" in lower_msg or "what's my name" in lower_msg:
 #             name = session.get("user_name")
-#             agent_reply = f"Your name is {name}!" if name else "You haven't told me your name yet in this session."
+#             agent_reply = f"Your name is {name}!" if name else "You haven't told me your name yet."
 #             reply_found = True
 
 #         elif lower_msg.startswith("i live in") or "i am from" in lower_msg:
@@ -465,12 +441,7 @@ async def debug_supabase(user_id: str):
 #         # Intent Routing to Multi-Agent Orchestrator
 #         if not reply_found:
 #             try:
-#                 if any(k in lower_msg for k in IDENT_KEYWORDS):
-#                     agent_reply = IDENTITY_RESPONSE
-#                 elif any(k in lower_msg for k in SUMMARY_KEYWORDS + FACTCHECK_KEYWORDS + BIAS_KEYWORDS + INVESTIGATE_KEYWORDS + REPORT_KEYWORDS + NEWS_KEYWORDS):
-#                     agent_reply = await multi_agent_orchestrator(message)
-#                 else:
-#                     agent_reply = await multi_agent_orchestrator(message)
+#                 agent_reply = await multi_agent_orchestrator(message)
 #             except Exception as e:
 #                 logger.error(f"Agent orchestration error: {e}")
 #                 agent_reply = "Sorry, something went wrong while processing your request. Please try again shortly."
@@ -493,6 +464,46 @@ async def debug_supabase(user_id: str):
 #     except Exception as e:
 #         logger.error(f"Error getting session: {e}")
 #         raise HTTPException(status_code=500, detail="Error retrieving session history.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -545,14 +556,7 @@ async def debug_supabase(user_id: str):
 #     "on news articles or claims. My goal is to help people spot misinformation and make informed decisions using verified information."
 # )
 
-# # Intent keyword sets
-# IDENT_KEYWORDS = ["who are you", "what's your name", "tell me about yourself", "what are you", "who is truthfinder", "what is your work", "what is your purpose", "what is your goal", "what is your mission", "what is your vision", "what is your goal", "what is your mission", "what is your vision", "what is your goal", "what is your mission", "what is your vision"]
-# SUMMARY_KEYWORDS = ["summarize", "summary"]
-# FACTCHECK_KEYWORDS = ["fact check", "is it true", "verify", "real or fake"]
-# BIAS_KEYWORDS = ["bias", "political bias", "tone", "sentiment"]
-# INVESTIGATE_KEYWORDS = ["investigate", "investigation", "deep check"]
-# REPORT_KEYWORDS = ["report", "generate report", "final report"]
-# NEWS_KEYWORDS = ["news", "article", "headline", "report", "fact", "fake", "misinformation", "bias"]
+
 
 # def sanitize_input(text: str) -> str:
 #     if not text:
@@ -679,12 +683,7 @@ async def debug_supabase(user_id: str):
 #         # Intent routing using the new main agent/orchestrator
 #         if not reply_found:
 #             try:
-#                 if any(k in lower_msg for k in IDENT_KEYWORDS):
-#                     agent_reply = IDENTITY_RESPONSE
-#                 elif any(k in lower_msg for k in SUMMARY_KEYWORDS + FACTCHECK_KEYWORDS + BIAS_KEYWORDS + INVESTIGATE_KEYWORDS + REPORT_KEYWORDS + NEWS_KEYWORDS):
-#                     agent_reply = await multi_agent_orchestrator(message)
-#                 else:
-#                     agent_reply = await multi_agent_orchestrator(message)
+#                 agent_reply = await multi_agent_orchestrator(message)
 #             except Exception as e:
 #                 logger.error(f"Error in agent orchestration: {e}")
 #                 agent_reply = "I'm experiencing technical difficulties right now. Please try again in a moment."
