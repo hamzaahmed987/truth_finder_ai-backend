@@ -10,4 +10,3 @@ python-multipart
 openai
 sentence-transformers
 textblob
-python-3.11.8
