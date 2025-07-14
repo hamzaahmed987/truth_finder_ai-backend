@@ -132,7 +132,7 @@ async def debug_supabase(user_id: str):
 # ---------------- Middleware & Routes ----------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "http://localhost:3000"],  # Replace with frontend URL in prod
+    allow_origins=["*", "http://localhost:3000","https://truth-finder-ai.vercel.app"],  # Replace with frontend URL in prod
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
