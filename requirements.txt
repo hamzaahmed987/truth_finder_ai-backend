@@ -8,5 +8,5 @@ tweepy
 google-generativeai
 python-multipart
 openai
-sentence-transformers
+# sentence-transformers
 textblob
