@@ -36,32 +36,54 @@ Return a 3-5 sentence summary.
     return await call_gemini_api(prompt)
 
 # ------------------------ 📰 Sub-Agent: News Event Analyzer ------------------------
-async def news_event_agent(user_message: str) -> str:
+async def news_event_agent(user_message: str, memory=None) -> str:
     keywords = user_message
     tweets = await search_twitter(keywords, max_results=10)
     twitter_context = "\n\n".join([f"Tweet by @{t.author_username}: {t.text}" for t in tweets]) if tweets else "No relevant tweets found."
+    user_memory = ""
+    if memory:
+        user_msgs = [m['content'] for m in memory if m.get('role') == 'user']
+        if user_msgs:
+            user_memory = '\n'.join(user_msgs[-5:])
     prompt = (
         "You are TruthFinder, an AI assistant that analyzes news events using both news and social media data. "
-        "Below is a user question about a recent event, and some recent tweets about the topic. "
-        "Use both sources to provide a comprehensive, up-to-date answer.\n\n"
+        "Below is a user question, some of their previous messages, and recent tweets about the topic. "
+        "Use all sources to provide a comprehensive, up-to-date answer. If the user asks about themselves, use their previous messages to answer.\n\n"
+        f"User's previous messages:\n{user_memory}\n\n"
         f"User question: {user_message}\n\n"
         f"Recent tweets:\n{twitter_context}\n\n"
         "Answer:"
     )
-    return await call_gemini_api(prompt)
+    gemini_response = await call_gemini_api(prompt)
+    # Fallback: If Gemini fails to answer and the question is about news, return tweets
+    if not gemini_response or "not available" in gemini_response.lower() or "couldn't process" in gemini_response.lower():
+        if any(word in user_message.lower() for word in ["news", "headline", "update", "event", "breaking"]):
+            if tweets:
+                tweets_text = "\n\n".join([f"@{t.author_username}: {t.text}" for t in tweets])
+                return f"Gemini could not answer. Here are some recent tweets about '{user_message}':\n\n{tweets_text}"
+            else:
+                return "Gemini could not answer and no recent tweets were found about this topic."
+    return gemini_response
 
 # ------------------------ 🔁 Utility: Gemini API Caller ------------------------
 async def call_gemini_api(prompt: str) -> str:
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
+    import time
     try:
-        async with httpx.AsyncClient() as client:
+        start = time.time()
+        async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(GEMINI_URL, json=payload)
             res.raise_for_status()
             data = res.json()
             text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
-            return text or "I couldn't process that request. Could you try rephrasing?"
+        elapsed = time.time() - start
+        print(f"🔵 Gemini API call took {elapsed:.2f}s")
+        return text or "I couldn't process that request. Could you try rephrasing?"
+    except httpx.TimeoutException:
+        print("🔵 Gemini API call timed out")
+        return "Sorry, the AI is taking too long to respond. Please try again later."
     except Exception as e:
         print(f"🔵 GEMINI API ERROR: {e}")
         return "I'm having trouble processing that right now. Could you try again?"
@@ -107,26 +129,8 @@ async def multi_agent_orchestrator(user_message: str, user_id: str = None) -> st
         memory = await get_chat_history(user_id)
         print(f"🔵 ORCHESTRATOR: Memory count={len(memory)}")
 
-    if memory:
-        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in memory[-20:]])
-        prompt = (
-            "You are TruthFinder, a friendly and helpful AI assistant. You can discuss news, current events, personal topics, "
-            "and general questions. You have access to the user's complete chat history and personal information they've shared. "
-            "If they ask about their personal data, provide it naturally from the conversation history. "
-            "Be conversational, helpful, and engaging. You can analyze news, fact-check information, and have general conversations. "
-            "Never say you don't have access to personal data if it's in the conversation history. "
-            "Remember everything the user has told you and use that information when relevant.\n\n"
-            f"Complete conversation history:\n{history_text}\n\n"
-            f"User: {original_message}\nAssistant:"
-        )
-    else:
-        prompt = (
-            "You are TruthFinder, a friendly and helpful AI assistant. You can discuss news, current events, personal topics, "
-            "and general questions. Be conversational, helpful, and engaging. You can analyze news, fact-check information, and have general conversations.\n"
-            f"User: {original_message}\nAssistant:"
-        )
-
-    agent_reply = await call_gemini_api(prompt)
+    # Always use news_event_agent so Twitter news is included
+    agent_reply = await news_event_agent(original_message, memory=memory)
 
     # ✅ Save agent reply directly here
     if user_id and agent_reply:

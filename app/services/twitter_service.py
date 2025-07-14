@@ -18,6 +18,14 @@ class TwitterService:
     def __init__(self):
         self.client = None
         self.is_available = False
+
+        # Debug: Log the loaded Twitter API keys
+        logger.info(f"TWITTER_API_KEY: {settings.twitter_api_key}")
+        logger.info(f"TWITTER_API_SECRET: {settings.twitter_api_secret}")
+        logger.info(f"TWITTER_API_TOKEN_SECRET: {settings.twitter_access_token_secret}")
+        logger.info(f"TWITTER_ACCESS_TOKEN: {settings.twitter_access_token}")
+        logger.info(f"TWITTER_ACCESS_TOKEN_SECRET: {settings.twitter_access_token_secret}")
+        logger.info(f"TWITTER_BEARER_TOKEN: {settings.twitter_bearer_token}")
         
         try:
             # Check if we have the required API keys
@@ -25,7 +33,8 @@ class TwitterService:
                 settings.twitter_api_key,
                 settings.twitter_api_secret,
                 settings.twitter_access_token,
-                settings.twitter_access_token_secret
+                settings.twitter_access_token_secret,
+                settings.twitter_bearer_token
             ]):
                 logger.warning("⚠️ Twitter API keys not configured. Twitter service will be disabled.")
                 return
