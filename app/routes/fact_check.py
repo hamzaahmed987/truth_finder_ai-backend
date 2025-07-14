@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.services.news_analyzer import NewsAnalyzer
 from app.services.multi_agent_orchestrator import multi_agent_orchestrator
 from app.models.request_models import FactCheckRequest
-from app.services.supabase_chat import save_chat_message, get_chat_history, SUPABASE_URL, SUPABASE_KEY  # ✅ NEW
+from app.services.supabase_chat import save_chat_message, get_chat_history, SUPABASE_URL, SUPABASE_KEY
 import logging, re, uuid, os
 from dotenv import load_dotenv
 from datetime import datetime
@@ -51,13 +51,9 @@ async def chat_agent(request: Request):
         if "who are you" in message.lower():
             agent_reply = IDENTITY_RESPONSE
         else:
-            # Pass only the original user message to the orchestrator
             agent_reply = await multi_agent_orchestrator(message, user_id=user_id)
 
-        # Save agent reply to Supabase
-        logger.info(f"🔵 SAVING AGENT REPLY: {agent_reply[:50]}...")
-        agent_save_result = await save_chat_message(user_id=user_id, role="agent", message=agent_reply)
-        logger.info(f"🔵 AGENT SAVE RESULT: {agent_save_result}")
+        # ✅ Agent reply is now saved inside multi_agent_orchestrator()
 
         # Get updated history
         logger.info(f"🔵 FETCHING UPDATED HISTORY")
@@ -79,7 +75,7 @@ async def chat_agent(request: Request):
         logger.error(f"Error in /agent/chat: {e}")
         raise HTTPException(status_code=500, detail="Internal server error. Please try again.")
 
-# Debug endpoint to test Supabase
+# ------------------------- Supabase Debug Endpoint -------------------------
 @router.get("/debug/supabase/{user_id}")
 async def debug_supabase(user_id: str):
     try:
@@ -98,6 +94,7 @@ async def debug_supabase(user_id: str):
             "supabase_url": SUPABASE_URL,
             "supabase_key_set": bool(SUPABASE_KEY)
         }
+
 
 
 
@@ -364,7 +361,21 @@ async def debug_supabase(user_id: str):
 #         return session
 #     return None
 
+# # ------------------------- Intent & Keyword Sets -------------------------
 
+# IDENTITY_RESPONSE = (
+#     "I am TruthFinder — your AI-powered news assistant. "
+#     "I specialize in summarizing, fact-checking, bias detection, investigation, and generating reports "
+#     "on news articles or claims. I aim to help people spot misinformation and make informed decisions."
+# )
+
+# IDENT_KEYWORDS = ["who are you", "what's your name", "tell me about yourself", "who is truthfinder", "what is your work"]
+# SUMMARY_KEYWORDS = ["summarize", "summary"]
+# FACTCHECK_KEYWORDS = ["fact check", "is it true", "verify", "real or fake"]
+# BIAS_KEYWORDS = ["bias", "political bias", "tone", "sentiment"]
+# INVESTIGATE_KEYWORDS = ["investigate", "investigation", "deep check"]
+# REPORT_KEYWORDS = ["report", "generate report", "final report"]
+# NEWS_KEYWORDS = ["news", "article", "headline", "report", "fake", "misinformation"]
 
 # # ------------------------- Endpoints -------------------------
 
@@ -441,7 +452,12 @@ async def debug_supabase(user_id: str):
 #         # Intent Routing to Multi-Agent Orchestrator
 #         if not reply_found:
 #             try:
-#                 agent_reply = await multi_agent_orchestrator(message)
+#                 if any(k in lower_msg for k in IDENT_KEYWORDS):
+#                     agent_reply = IDENTITY_RESPONSE
+#                 elif any(k in lower_msg for k in SUMMARY_KEYWORDS + FACTCHECK_KEYWORDS + BIAS_KEYWORDS + INVESTIGATE_KEYWORDS + REPORT_KEYWORDS + NEWS_KEYWORDS):
+#                     agent_reply = await multi_agent_orchestrator(message)
+#                 else:
+#                     agent_reply = await multi_agent_orchestrator(message)
 #             except Exception as e:
 #                 logger.error(f"Agent orchestration error: {e}")
 #                 agent_reply = "Sorry, something went wrong while processing your request. Please try again shortly."
@@ -556,7 +572,14 @@ async def debug_supabase(user_id: str):
 #     "on news articles or claims. My goal is to help people spot misinformation and make informed decisions using verified information."
 # )
 
-
+# # Intent keyword sets
+# IDENT_KEYWORDS = ["who are you", "what's your name", "tell me about yourself", "what are you", "who is truthfinder", "what is your work", "what is your purpose", "what is your goal", "what is your mission", "what is your vision", "what is your goal", "what is your mission", "what is your vision", "what is your goal", "what is your mission", "what is your vision"]
+# SUMMARY_KEYWORDS = ["summarize", "summary"]
+# FACTCHECK_KEYWORDS = ["fact check", "is it true", "verify", "real or fake"]
+# BIAS_KEYWORDS = ["bias", "political bias", "tone", "sentiment"]
+# INVESTIGATE_KEYWORDS = ["investigate", "investigation", "deep check"]
+# REPORT_KEYWORDS = ["report", "generate report", "final report"]
+# NEWS_KEYWORDS = ["news", "article", "headline", "report", "fact", "fake", "misinformation", "bias"]
 
 # def sanitize_input(text: str) -> str:
 #     if not text:
@@ -683,7 +706,12 @@ async def debug_supabase(user_id: str):
 #         # Intent routing using the new main agent/orchestrator
 #         if not reply_found:
 #             try:
-#                 agent_reply = await multi_agent_orchestrator(message)
+#                 if any(k in lower_msg for k in IDENT_KEYWORDS):
+#                     agent_reply = IDENTITY_RESPONSE
+#                 elif any(k in lower_msg for k in SUMMARY_KEYWORDS + FACTCHECK_KEYWORDS + BIAS_KEYWORDS + INVESTIGATE_KEYWORDS + REPORT_KEYWORDS + NEWS_KEYWORDS):
+#                     agent_reply = await multi_agent_orchestrator(message)
+#                 else:
+#                     agent_reply = await multi_agent_orchestrator(message)
 #             except Exception as e:
 #                 logger.error(f"Error in agent orchestration: {e}")
 #                 agent_reply = "I'm experiencing technical difficulties right now. Please try again in a moment."

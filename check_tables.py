@@ -29,11 +29,11 @@ except Exception as e:
 print("\n=== Creating chat_history table ===")
 create_table_sql = """
 CREATE TABLE IF NOT EXISTS chat_history (
-    id SERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,
     role TEXT NOT NULL,
-    message TEXT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 """
 

@@ -3,14 +3,12 @@ import httpx
 import json
 from dotenv import load_dotenv
 from app.services.tools import TRUTHFINDER_TOOLS
-from app.services.supabase_chat import get_chat_history
+from app.services.supabase_chat import get_chat_history, save_chat_message
+from app.services.tools import search_twitter
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("gemini_api_key")
-
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-
-from app.services.tools import search_twitter
 
 # ------------------------ 🔧 Sub-Agent: Fact-Checker ------------------------
 async def factcheck_agent(news_text: str) -> str:
@@ -41,9 +39,7 @@ Return a 3-5 sentence summary.
 async def news_event_agent(user_message: str) -> str:
     keywords = user_message
     tweets = await search_twitter(keywords, max_results=10)
-    twitter_context = "\n\n".join([
-        f"Tweet by @{t.author_username}: {t.text}" for t in tweets
-    ]) if tweets else "No relevant tweets found."
+    twitter_context = "\n\n".join([f"Tweet by @{t.author_username}: {t.text}" for t in tweets]) if tweets else "No relevant tweets found."
     prompt = (
         "You are TruthFinder, an AI assistant that analyzes news events using both news and social media data. "
         "Below is a user question about a recent event, and some recent tweets about the topic. "
@@ -105,16 +101,14 @@ main_agent = TruthFinderAgent(TRUTHFINDER_TOOLS)
 async def multi_agent_orchestrator(user_message: str, user_id: str = None) -> str:
     original_message = user_message
 
-    # Get chat history from Supabase
     memory = []
     if user_id:
         print(f"🔵 ORCHESTRATOR: Getting chat history for user_id={user_id}")
         memory = await get_chat_history(user_id)
         print(f"🔵 ORCHESTRATOR: Memory count={len(memory)}")
 
-    # Use Gemini for all conversations with full context
     if memory:
-        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in memory[-20:]])  # Last 20 messages
+        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in memory[-20:]])
         prompt = (
             "You are TruthFinder, a friendly and helpful AI assistant. You can discuss news, current events, personal topics, "
             "and general questions. You have access to the user's complete chat history and personal information they've shared. "
@@ -131,5 +125,12 @@ async def multi_agent_orchestrator(user_message: str, user_id: str = None) -> st
             "and general questions. Be conversational, helpful, and engaging. You can analyze news, fact-check information, and have general conversations.\n"
             f"User: {original_message}\nAssistant:"
         )
-    
-    return await call_gemini_api(prompt) 
+
+    agent_reply = await call_gemini_api(prompt)
+
+    # ✅ Save agent reply directly here
+    if user_id and agent_reply:
+        print(f"🔵 Saving agent reply inside orchestrator for user_id={user_id}")
+        await save_chat_message(user_id=user_id, role="agent", message=agent_reply)
+
+    return agent_reply
