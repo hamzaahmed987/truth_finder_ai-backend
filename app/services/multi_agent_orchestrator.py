@@ -75,8 +75,13 @@ async def call_gemini_api(prompt: str) -> str:
         start = time.time()
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(GEMINI_URL, json=payload)
-            res.raise_for_status()
-            data = res.json()
+            print(f"Gemini API status: {res.status_code}")
+            print(f"Gemini API response: {res.text}")
+            try:
+                data = res.json()
+            except Exception as e:
+                print(f"Failed to parse Gemini response as JSON: {e}")
+                return "I'm having trouble processing that right now. Could you try again?"
             text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
         elapsed = time.time() - start
         print(f"🔵 Gemini API call took {elapsed:.2f}s")
