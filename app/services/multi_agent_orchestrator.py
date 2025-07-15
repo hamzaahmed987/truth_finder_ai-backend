@@ -42,14 +42,16 @@ async def news_event_agent(user_message: str, memory=None) -> str:
     twitter_context = "\n\n".join([f"Tweet by @{t.author_username}: {t.text}" for t in tweets]) if tweets else "No relevant tweets found."
     user_memory = ""
     if memory:
+        # Instead of just last 5, pass the FULL chat history as context
         user_msgs = [m['content'] for m in memory if m.get('role') == 'user']
         if user_msgs:
-            user_memory = '\n'.join(user_msgs[-5:])
+            user_memory = '\n'.join(user_msgs)
     prompt = (
-        "You are TruthFinder, an AI assistant that analyzes news events using both news and social media data. "
-        "Below is a user question, some of their previous messages, and recent tweets about the topic. "
-        "Use all sources to provide a comprehensive, up-to-date answer. If the user asks about themselves, use their previous messages to answer.\n\n"
-        f"User's previous messages:\n{user_memory}\n\n"
+        "You are TruthFinder, an AI assistant that analyzes news events and also remembers everything a user has ever told you. "
+        "Below is the user's full chat history, their new question, and recent tweets about the topic. "
+        "Use ALL available user data and history to answer their question, especially if they ask about themselves, their past questions, or anything they've shared before. "
+        "If you find relevant information in their history, use it to answer. If not, say you don't know.\n\n"
+        f"User's full chat history:\n{user_memory}\n\n"
         f"User question: {user_message}\n\n"
         f"Recent tweets:\n{twitter_context}\n\n"
         "Answer:"
