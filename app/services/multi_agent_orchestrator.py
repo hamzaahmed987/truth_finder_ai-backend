@@ -42,10 +42,10 @@ async def news_event_agent(user_message: str, memory=None) -> str:
     twitter_context = "\n\n".join([f"Tweet by @{t.author_username}: {t.text}" for t in tweets]) if tweets else "No relevant tweets found."
     user_memory = ""
     if memory:
-        # Instead of just last 5, pass the FULL chat history as context
-        user_msgs = [m['content'] for m in memory if m.get('role') == 'user']
-        if user_msgs:
-            user_memory = '\n'.join(user_msgs)
+        # Include both user and agent messages in the memory
+        all_msgs = [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in memory]
+        if all_msgs:
+            user_memory = '\n'.join(all_msgs)
     prompt = (
         "You are TruthFinder, an AI assistant that analyzes news events and also remembers everything a user has ever told you. "
         "Below is the user's full chat history, their new question, and recent tweets about the topic. "
