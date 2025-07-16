@@ -45,10 +45,12 @@ async def chat_agent(request: Request):
         data = await request.json()
         message = sanitize_input(data.get('message', ''))
         session_id = data.get('session_id') or str(uuid.uuid4())
-        user_id = data.get('user_id') or session_id
+        user_id = data.get('user_id')
 
         if not message:
             raise HTTPException(status_code=400, detail="Message cannot be empty.")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User must be logged in.")
 
         # Save to Supabase
         logging.info(f"🔵 Saving message: {message[:50]}")
